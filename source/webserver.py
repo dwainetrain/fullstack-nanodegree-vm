@@ -59,9 +59,9 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 for entry in query:
                     output += '<li> %s </br>' % entry.name
                     output += '<p><a href="/restaurants/%s/edit">Edit</a></br>' % entry.id
-                    output += '<a href="/delete">Delete</a></p></li>' 
+                    output += '<a href="restaurants/%s/delete">Delete</a></p></li>' % entry.id
                 output += "</body></html>"
-                self.wfile.write(output)
+                self.wfile.write(output) 
                 return
             
             if self.path.endswith("/edit"):
@@ -84,6 +84,25 @@ class WebServerHandler(BaseHTTPRequestHandler):
                     output += "</body></html>"
                     self.wfile.write(output)
                     return
+            # Get
+            if self.path.endswith("/delete"):
+                restaurantIDPath = self.path.split("/")[2]
+                myRestaurantQuery = session.query(Restaurant).filter_by(
+                    id=restaurantIDPath).one()
+                if myRestaurantQuery:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'text/html')
+                    self.end_headers()
+                    # So, create the form here?
+                    output = ""
+                    output += "<html><body>"
+                    output += "<h1>Edit the Restaurant Name</h1>"
+                    output += "<form method='POST' enctype='multipart/form-data' action='restaurants/%s/delete'>" %restaurantIDPath
+                    output += "<h2>Are you sure want to delete this restaurant?</h2>"
+                    output += "<input type='submit' value='Delete'> </form>"
+                    output += "</body></html>"
+                    self.wfile.write(output)
+                    return
 
             if self.path.endswith("/restaurants/add"):
                 self.send_response(200)
@@ -95,17 +114,10 @@ class WebServerHandler(BaseHTTPRequestHandler):
                 output += "<h1>Add a New Restaurant</h1>"
                 output += "<form method='POST' enctype='multipart/form-data' action='/restaurants/add'><h2>Please enter the new restaurant name below:</h2>"
                 output += "<input name='restaurant' type='text' >"
-                output += "<input type='submit' value='Submit'> </form>"
+                output += "<input type='submit' value='submit'> </form>"
                 output += "</body></html>"
                 self.wfile.write(output)
                 return
-
-
-            if self.path.endswith("/delete"):
-                # Try a 'are you sure you want to delete *Restaurant name*
-                pass
-            
-
 
 
         except IOError:
@@ -148,6 +160,26 @@ class WebServerHandler(BaseHTTPRequestHandler):
                     self.send_header('Content-type', 'text/html')
                     self.send_header('Location', '/restaurants') # HTTP Header information needed for redirect
                     self.end_headers()
+
+            if self.path.endswith("/delete"):
+                ctype, pdict = cgi.parse_header(
+                    self.headers.getheader('content-type'))
+                if ctype == 'multipart/form-data':
+                    fields = cgi.parse_multipart(self.rfile, pdict)
+                    # restaurant_edit = fields.get('restaurantEdit')
+                    restaurantIDPath = self.path.split("/")[2]
+
+                myRestaurantQuery = session.query(Restaurant).filter_by(
+                    id=restaurantIDPath).one()
+                if myRestaurantQuery != []:
+                    # myRestaurantQuery.name = restaurant_edit[0]
+                    session.delete(myRestaurantQuery)
+                    session.commit()
+                    
+                    self.send_response(301)
+                    self.send_header('Content-type', 'text/html')
+                    self.send_header('Location', '/restaurants') # HTTP Header information needed for redirect
+                    self.end_headers()            
 
 
             # output = ""
