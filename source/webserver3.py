@@ -99,7 +99,7 @@ class WebServerHandler(BaseHTTPRequestHandler):
         if self.path.endswith("/restaurants/add"):
             ctype, pdict = cgi.parse_header(
                 self.headers['content-type'])
-            pdict['boundary'] = bytes(pdict['boundary'], "utf-8")
+            pdict['boundary'] = bytes(pdict['boundary'], "UTF-8")
             if ctype == 'multipart/form-data':
                 fields = cgi.parse_multipart(self.rfile, pdict)
                 restaurant_name = fields.get('restaurant')
