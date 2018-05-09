@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import request
+from flask import request, render_template, redirect, url_for, flash, jsonify
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Restaurant, MenuItem
@@ -11,6 +11,21 @@ Base.metadata.bind = engine
 
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
+
+# Making an API Endpoint (GET Request)
+@app.route('/restaurants/<int:restaurant_id>/menu/JSON')
+def restaurantMenuJSON(restaurant_id):
+    restaurant = session.query(Restaurant).filter_by(
+        id=restaurant_id).one()
+    items = session.query(MenuItem).filter_by(
+        restaurant_id=restaurant_id).all()
+    return jsonify(MenuItems=[i.serialize for i in items])
+
+@app.route('/restaurants/<int:restaurant_id>/menu/<int:menu_id>/JSON/')
+def restaurantMenuItemJSON(restaurant_id, menu_id):
+    menuItem = session.query(MenuItem).filter_by(id = menu_id).one()
+    return jsonify(menuItem.serialize)
+
 
 @app.route('/')
 def homePage():
@@ -30,132 +45,50 @@ def homePage():
 def restaurantMenu(restaurant_id):
     restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
     items = session.query(MenuItem).filter_by(restaurant_id = restaurant_id)
-    output = ''
-    for i in items:
-        output += i.name
-        output += '</br>'
-        output += i.price
-        output += '</br>'
-        output += i.description
-        output += '</br>'
-        output += '<a href="/restaurant/%s/%s/edit">Edit</a>' % (restaurant_id, i.id)
-        output += '</br>'
-        output += '<a href="/restaurant/%s/%s/delete">Delete</a>' % (restaurant_id, i.id)
-        output += '</br></br>'
-    output += '<a href="/restaurant/%s/add">Add new menu item</a>' %restaurant_id
-    return output
+    return render_template('menu.html', restaurant=restaurant, items=items)
 
 # Create functions to newMenuItem, editMenuItem and deleteMenuItem...
 
 @app.route('/restaurant/<int:restaurant_id>/add', methods=['GET', 'POST'])
 def newMenuItem(restaurant_id):
-    restaurant = session.query(Restaurant).filter_by(id = restaurant_id).one()
-    output = ''
-    output += "<html><body><p>Task 1 Complete!"
-    # Ah, handcoding something you didn't need to handcode.
-    #I'll clean this up in a bit
-    # if request.method == 'POST':
-    #     name = request.form['name']
-    #     description = request.form['description']
-    #     price = request.form['price']
-    #     # Below is 'mapping' the object so you can add it to the database
-    #     new_menu_item = MenuItem(
-    #         name=name, description=description, 
-    #         price=price, restaurant_id=restaurant_id
-    #         )
-    #     session.add(new_menu_item)
-    #     session.commit()
+    if request.method == 'POST':
+        newItem = MenuItem(name = request.form['name'], restaurant_id = restaurant_id)
+        session.add(newItem)
+        session.commit()
+        flash('new menu item created!')
+        return redirect(url_for('restaurantMenu', restaurant_id = restaurant_id))
+    else:
+        return render_template('newmenuitem.html', restaurant_id = restaurant_id)
+    
+@app.route('/restaurant/<int:restaurant_id>/<int:menu_id>/edit', methods=['GET', 'POST'])
+def editMenuItem(restaurant_id, menu_id):
+    editedItem = session.query(MenuItem).filter_by(id=menu_id).one()
+    if request.method == 'POST':
+        if request.form['name']:
+           editedItem.name = request.form['name']
+        session.add(editedItem)
+        session.commit()
+        flash('The item has been edited!')
+        return redirect(url_for('restaurantMenu', restaurant_id=restaurant_id))
+    else:
+        return render_template(
+            'editmenuitem.html', restaurant_id=restaurant_id, menu_id=menu_id, item=editedItem)
 
-    #     output += "<h3> You've added the following new Menu item to %s</h3><br />" %restaurant.name
-    #     output += '<strong>' + name + '</strong>'
-    #     output += '</br>'
-    #     output += description
-    #     output += '</br>'
-    #     output += price
-    #     output += '</br>'
 
-    # else:
-       
-    #     output += "<h1>Add a New Menu Item to %s</h1>" %restaurant.name
-    #     output += "<form method='POST' enctype='multipart/form-data' action='/add-menu-item/%s'>" %restaurant.id
-    #     output += "<h2>Please enter the new menu item info below:</h2>" 
-
-    #     output += "<input name='name' type='text' ><br />"
-    #     output += "<input name='description' type='text' ><br />"
-    #     output += "<input name='price' type='text'><br />"
-    #     output += "<input type='submit' value='submit'> </form>"
-
-    output += "</body></html>"
-    return output
-
-@app.route('/restaurant/<int:restaurant_id>/<int:menuItem_id>/edit', methods=['GET', 'POST'])
-def editMenuItem(restaurant_id, menuItem_id):
-    menuItem = session.query(MenuItem).filter_by(id = menuItem_id).one()
-    output = ''
-    output += "<html><body><p>Task 2 Complete!</p>"
-    # if request.method == 'POST':
-    #     output = ''
-    #     output += 'Edit the menu item here'
-    #     output += '</br>'
-    #     output += menuItem.name
-    #     output += '</br>'
-    #     output += menuItem.description
-    #     output += '</br>'
-    #     output += menuItem.price
-    #     output += '</br>'
-
-    #     name = request.form['name']
-    #     description = request.form['description']
-    #     price = request.form['price']
-    #     # Below is 'mapping' the object so you can add it to the database
-    #     update_menu_item = MenuItem(
-    #         name=name, description=description, 
-    #         price=price, id=menuItem_id
-    #         )
-    #     session.add(update_menu_item)
-    #     session.commit()
-
-    #     output += "<h3> You've updated the following Menu item</h3><br />"
-    #     output += '<strong>' + name + '</strong>'
-    #     output += '</br>'
-    #     output += description
-    #     output += '</br>'
-    #     output += price
-    #     output += '</br>'
-
-    # else:
-    #     output = ''
-    #     output += 'Edit the menu item here'
-    #     output += '</br>'
-    #     output += menuItem.name
-    #     output += '</br>'
-    #     output += menuItem.description
-    #     output += '</br>'
-    #     output += menuItem.price
-    #     output += '</br>'
-
-    #     output += "<h1>Edit a Menu Item</h1>"
-    #     output += "<form method='POST' enctype='multipart/form-data' action='/edit-menu-item/%s'>" %menuItem.id
-    #     output += "<h2>Please update the menu item info below:</h2>" 
-
-    #     output += "Name: <input name='name' type='text' ><br />"
-    #     output += "Description: <input name='description' type='text' ><br />"
-    #     output += "Price: <input name='price' type='text'><br />"
-    #     output += "<input type='submit' value='submit'> </form>"
-
-    output += "</body></html>"
-    return output
-
-@app.route('/restaurant/<int:restaurant_id>/<int:menuItem_id>/delete', methods=['GET', 'POST'])
-def deleteMenuItem(restaurant_id, menuItem_id):
-    menuItem = session.query(MenuItem).filter_by(id = menuItem_id).one()
-    output = ''
-    output += "<html><body><p>Task 3 Complete!</p>"
-
-    output += "</body></html>"
-    return output
+@app.route('/restaurant/<int:restaurant_id>/<int:menu_id>/delete', methods=['GET', 'POST'])
+def deleteMenuItem(restaurant_id, menu_id):
+    menuItem = session.query(MenuItem).filter_by(id = menu_id).one()
+    if request.method == 'POST':
+        session.delete(menuItem)
+        session.commit()
+        flash('Say goodbye to your little friend!')
+        return redirect(url_for('restaurantMenu', restaurant_id=restaurant_id))
+    else:
+        return render_template(
+            'deletemenuitem.html', restaurant_id=restaurant_id, menu_id=menu_id, item=menuItem)
 
 
 if __name__ == '__main__':
+    app.secret_key = 'super_secret_key' # Flask uses this to create sessions
     app.debug = True
     app.run(host = '0.0.0.0', port = 5000)
